@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - EldorbekShop</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      margin: 0 auto 30px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    form input, form button {
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .product-list {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .product-item {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .product-info {
+      flex: 1;
+    }
+    .product-actions button {
+      margin-left: 10px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin Panel</h1>
+  <form id="productForm">
+    <input type="text" id="name" placeholder="Mahsulot nomi" required>
+    <input type="number" id="price" placeholder="Narxi" required>
+    <input type="text" id="image" placeholder="Rasim URL manzili" required>
+    <input type="hidden" id="editIndex">
+    <button type="submit">Saqlash</button>
+  </form>
+
+  <div class="product-list" id="productList"></div>
+
+  <script>
+    const form = document.getElementById('productForm');
+    const nameInput = document.getElementById('name');
+    const priceInput = document.getElementById('price');
+    const imageInput = document.getElementById('image');
+    const editIndex = document.getElementById('editIndex');
+    const productList = document.getElementById('productList');
+
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+
+    function renderProducts() {
+      productList.innerHTML = '';
+      products.forEach((product, index) => {
+        const div = document.createElement('div');
+        div.className = 'product-item';
+        div.innerHTML = `
+          <div class="product-info">
+            <strong>${product.name}</strong><br>
+            $${product.price}<br>
+            <small>${product.image}</small>
+          </div>
+          <div class="product-actions">
+            <button onclick="editProduct(${index})">Tahrirlash</button>
+            <button onclick="deleteProduct(${index})">O‘chirish</button>
+          </div>
+        `;
+        productList.appendChild(div);
+      });
+    }
+
+    function editProduct(index) {
+      const product = products[index];
+      nameInput.value = product.name;
+      priceInput.value = product.price;
+      imageInput.value = product.image;
+      editIndex.value = index;
+    }
+
+    function deleteProduct(index) {
+      if (confirm("Haqiqatan ham o‘chirmoqchimisiz?")) {
+        products.splice(index, 1);
+        localStorage.setItem('products', JSON.stringify(products));
+        renderProducts();
+      }
+    }
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const name = nameInput.value;
+      const price = parseFloat(priceInput.value);
+      const image = imageInput.value;
+      const index = editIndex.value;
+
+      if (index) {
+        products[index] = { name, price, image };
+        editIndex.value = '';
+      } else {
+        products.push({ name, price, image });
+      }
+
+      localStorage.setItem('products', JSON.stringify(products));
+      form.reset();
+      renderProducts();
+    };
+
+    renderProducts();
+  </script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EldorbekShop</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+    body { background-color: #f9f9f9; }
+    header { background-color: #0d1b2a; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .logo { font-size: 24px; font-weight: bold; }
+    nav a { color: white; margin: 0 15px; text-decoration: none; font-weight: 500; }
+    .search { display: flex; gap: 5px; margin-top: 10px; }
+    .search input { padding: 8px; border: none; border-radius: 5px; }
+    .search button { padding: 8px 12px; border: none; background-color: #0072ff; color: white; border-radius: 5px; cursor: pointer; }
+    .cart-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+    .banner { background: linear-gradient(to right, #00c6ff, #0072ff); color: white; text-align: center; padding: 60px 20px; }
+    .products { display: flex; justify-content: center; flex-wrap: wrap; padding: 40px 20px; gap: 20px; }
+    .product-card { background: white; border-radius: 15px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 20px; width: 250px; text-align: center; transition: transform 0.2s ease; }
+    .product-card:hover { transform: translateY(-5px); }
+    .product-card img { width: 100%; height: auto; object-fit: contain; border-radius: 10px; margin-bottom: 15px; }
+    button { background-color: #0072ff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+    .stars { margin-top: 10px; }
+    .star { font-size: 20px; color: #ccc; cursor: pointer; }
+    .star.selected { color: gold; }
+    footer { background-color: #0d1b2a; color: white; text-align: center; padding: 20px; }
+    .social a { color: #90e0ef; text-decoration: none; margin: 0 10px; }
+    .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 500px; border-radius: 10px; }
+    .close { float: right; font-size: 24px; cursor: pointer; }
+    #orderForm input, #orderForm textarea, #orderForm button {
+      width: 100%; margin-bottom: 10px; padding: 10px; font-size: 16px;
+      border-radius: 6px; border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">EldorbekShop</div>
+    <nav>
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Contact</a>
+    </nav>
+    <div class="search">
+      <input type="text" placeholder="Qidirish..." id="searchInput"/>
+      <button>🔍</button>
+    </div>
+    <button class="cart-btn" onclick="openCart()">🛒</button>
+  </header>
+
+  <section class="banner">
+    <h1>Telefon aksessuarlari</h1>
+    <p>Eng yangi va sifatli mahsulotlar</p>
+  </section>
+
+  <section class="products" id="productSection"></section>
+
+  <footer>
+    <p>© 2025 EldorbekShop | Barcha huquqlar himoyalangan</p>
+    <div class="social">
+      <a href="#">Instagram</a> |
+      <a href="#">Telegram</a>
+    </div>
+  </footer>
+
+  <div id="cartModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeCart()">&times;</span>
+      <h2>Savat</h2>
+      <ul id="cartItems"></ul>
+      <p><strong>Umumiy:</strong> $<span id="totalPrice">0</span></p>
+      <form id="orderForm">
+        <h3>🧾 Buyurtma berish shakli</h3>
+        <input type="text" id="orderName" placeholder="Ismingiz" required>
+        <input type="tel" id="orderPhone" placeholder="Telefon raqamingiz" required>
+        <textarea id="orderAddress" placeholder="Manzilingiz" required></textarea>
+        <input type="text" id="orderUsername" placeholder="Telegram username (masalan: @ali)" required>
+        <button type="submit">📦 Zakaz berish</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const productSection = document.getElementById('productSection');
+    const savedProducts = JSON.parse(localStorage.getItem('products')) || [];
+
+    function renderProducts() {
+      productSection.innerHTML = '';
+      if (savedProducts.length === 0) {
+        productSection.innerHTML = '<p style="text-align:center;">Mahsulotlar mavjud emas</p>';
+        return;
+      }
+
+      savedProducts.forEach((product, index) => {
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+        const savedRating = getProductRating(product.name);
+        productCard.innerHTML = `
+          <img src="${product.image}" alt="${product.name}" />
+          <h3>${product.name}</h3>
+          <p>$${product.price}</p>
+          <div class="stars" data-name="${product.name}">
+            ${[1,2,3,4,5].map(i => `<span class="star ${i <= savedRating ? 'selected' : ''}" data-star="${i}">★</span>`).join('')}
+          </div>
+          <button onclick="addToCart('${product.name}', ${product.price})">Savatga qo‘shish</button>
+        `;
+        productSection.appendChild(productCard);
+      });
+
+      document.querySelectorAll('.stars').forEach(starGroup => {
+        const name = starGroup.dataset.name;
+        starGroup.querySelectorAll('.star').forEach(star => {
+          star.addEventListener('click', () => {
+            const rating = parseInt(star.dataset.star);
+            setProductRating(name, rating);
+            renderProducts();
+          });
+        });
+      });
+    }
+
+    function getProductRating(name) {
+      const ratings = JSON.parse(localStorage.getItem('ratings')) || {};
+      return ratings[name] || 0;
+    }
+
+    function setProductRating(name, rating) {
+      const ratings = JSON.parse(localStorage.getItem('ratings')) || {};
+      ratings[name] = rating;
+      localStorage.setItem('ratings', JSON.stringify(ratings));
+    }
+
+    function addToCart(name, price) {
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const existing = cart.find(item => item.name === name);
+      if (existing) {
+        existing.qty++;
+      } else {
+        cart.push({ name, price, qty: 1 });
+      }
+      localStorage.setItem('cart', JSON.stringify(cart));
+      alert(name + " savatga qo‘shildi!");
+    }
+
+    function openCart() {
+      const cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const cartItems = document.getElementById('cartItems');
+      const totalPrice = document.getElementById('totalPrice');
+      cartItems.innerHTML = '';
+      let total = 0;
+      cart.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item.name} x${item.qty} - $${item.price * item.qty}`;
+        cartItems.appendChild(li);
+        total += item.price * item.qty;
+      });
+      totalPrice.textContent = total;
+      document.getElementById('cartModal').style.display = 'block';
+    }
+
+    function closeCart() {
+      document.getElementById('cartModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('cartModal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    };
+
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('orderName').value.trim();
+      const phone = document.getElementById('orderPhone').value.trim();
+      const address = document.getElementById('orderAddress').value.trim();
+      const username = document.getElementById('orderUsername').value.trim();
+      const cart = JSON.parse(localStorage.getItem('cart')) || [];
+      if (!cart.length) return alert("Savat bo‘sh!");
+
+      const products = cart.map(p => `${p.name} x${p.qty} = $${p.price * p.qty}`).join('\n');
+      const total = cart.reduce((sum, p) => sum + (p.price * p.qty), 0);
+
+      const message = `\n🛒 *Yangi buyurtma!*\n👤 Ism: ${name}\n📞 Tel: ${phone}\n📍 Manzil: ${address}\n\n📦 Mahsulotlar:\n${products}\n\n💰 Umumiy: $${total}`;
+
+      const token = "7557755945:AAGLVAJHBSl34RvQ7HzlBYyWGKCa1C_VuG4";
+      const chat_id = "1089462473";
+
+      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id, text: message, parse_mode: "Markdown" })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          alert("✅ Buyurtma muvaffaqiyatli yuborildi!");
+          localStorage.removeItem('cart');
+          closeCart();
+        } else {
+          alert("❌ Buyurtma yuborishda xatolik.");
+        }
+      });
+
+      if (username.startsWith('@')) {
+        const userMsg = `✅ *Hurmatli ${name}!* Buyurtmangiz muvaffaqiyatli qabul qilindi.\nBiz tez orada siz bilan bog‘lanamiz. 😊`;
+        fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: username, text: userMsg, parse_mode: "Markdown" })
+        });
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('.product-card').forEach(card => {
+        const title = card.querySelector('h3').textContent.toLowerCase();
+        card.style.display = title.includes(filter) ? '' : 'none';
+      });
+    });
+
+    renderProducts();
+  </script>
+</body>
+</html>
